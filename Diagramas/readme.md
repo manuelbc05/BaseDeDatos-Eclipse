@@ -1,0 +1,2 @@
+- Diagrama entidad relación
+- Diagrama modelo relacional
