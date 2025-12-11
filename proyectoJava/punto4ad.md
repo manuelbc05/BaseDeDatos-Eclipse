@@ -14,7 +14,7 @@ import org.apache.ibatis.jdbc.ScriptRunner;
 
 public class main {
 
-	static Scanner scanner = new Scanner(System.in);
+	static Scanner sc = new Scanner(System.in);
 
 	public static void main(String[] args) {
 		int opcion;
@@ -24,23 +24,23 @@ public class main {
 			System.out.println("1 -> Crear base de datos");
 			System.out.println("2 -> Oracle SQL");
 			System.out.println("3 -> Borrar ambas SQL");
-			System.out.println("4 -> Menú de conexiones JDBC");  
+			System.out.println("4 -> Menú de conexiones JDBC");
 			System.out.println("5 -> Salir");
 			System.out.print("Selecciona una opción: ");
-			opcion = scanner.nextInt();
+			opcion = sc.nextInt();
 
 			switch (opcion) {
 			case 1:
-				instalarMySQL(); 
+				instalarMySQL();
 				break;
 			case 2:
 				instalarOracle();
 				break;
 			case 3:
-				eliminarAmbasSQL(); 
+				eliminarAmbasSQL();
 				break;
 			case 4:
-				menuConexiones(); 
+				menuConexiones();
 				break;
 			case 5:
 				System.out.println("Saliendo del programa...");
@@ -49,18 +49,17 @@ public class main {
 				System.out.println("Opción inválida. Intenta de nuevo.");
 			}
 
-			System.out.println(); 
+			System.out.println();
 		} while (opcion != 5);
 
-		scanner.close();
+		sc.close();
 
 	}
 
 	public static void instalarMySQL() {
 		try {
 			Class.forName("com.mysql.cj.jdbc.Driver");
-			Connection conexion = DriverManager.getConnection(
-					"jdbc:mysql://localhost/ejemplo?allowMultiQueries=true",
+			Connection conexion = DriverManager.getConnection("jdbc:mysql://localhost/ejemplo?allowMultiQueries=true",
 					"root", "");
 			Reader reader = new FileReader("./script/accesoDatosmysql.sql");
 
@@ -80,13 +79,13 @@ public class main {
 	public static void instalarOracle() {
 		try {
 			Class.forName("oracle.jdbc.driver.OracleDriver");
-			Connection conexion = DriverManager.getConnection(
-					"jdbc:oracle:thin:@localhost:1521/XEPDB1", "EJEMPLO", "ejemplo");
+			Connection conexion = DriverManager.getConnection("jdbc:oracle:thin:@localhost:1521/XEPDB1", "EJEMPLO",
+					"ejemplo");
 			Reader reader = new FileReader("./script/accesoDatosoracle.sql");
 
 			// Crear un objeto ScriptRunner
 			ScriptRunner scriptRunner = new ScriptRunner(conexion);
-			scriptRunner.setLogWriter(null); 
+			scriptRunner.setLogWriter(null);
 			scriptRunner.setAutoCommit(false);
 			scriptRunner.runScript(reader);
 			conexion.commit();
@@ -103,11 +102,10 @@ public class main {
 			Class.forName("com.mysql.cj.jdbc.Driver");
 			Class.forName("oracle.jdbc.driver.OracleDriver");
 
-			Connection conexion = DriverManager.getConnection(
-					"jdbc:mysql://localhost/ejemplo?allowMultiQueries=true",
+			Connection conexion = DriverManager.getConnection("jdbc:mysql://localhost/ejemplo?allowMultiQueries=true",
 					"root", "");
-			Connection conexion2 = DriverManager.getConnection(
-					"jdbc:oracle:thin:@localhost:1521/XEPDB1", "EJEMPLO", "ejemplo");
+			Connection conexion2 = DriverManager.getConnection("jdbc:oracle:thin:@localhost:1521/XEPDB1", "EJEMPLO",
+					"ejemplo");
 
 			Reader reader = new FileReader("./script/drop_all_mysql.sql");
 			Reader reader2 = new FileReader("./script/drop_all_oracle.sql");
@@ -136,17 +134,14 @@ public class main {
 	}
 
 	public static void menuConexiones() {
-		int op = -1;
+		int op;
 		do {
-			System.out.println("CONEXIÓN CON DISTINTAS BASES DE DATOS");
-			System.out.println("---------------------------------------");
+			System.out.println("===CONEXIÓN CON DISTINTAS BASES DE DATOS===");
 			System.out.println("1. Conectar a MySQL");
 			System.out.println("2. Conectar a Oracle");
-			System.out.println("0. Volver");
-			System.out.println("---------------------------------------");
-			System.out.print("TECLEA OPERACIÓN: ");
-
-			op = scanner.nextInt();
+			System.out.println("3. Volver");
+			System.out.print("Introduce una opcion: ");
+			op = sc.nextInt();
 
 			switch (op) {
 			case 1:
@@ -155,7 +150,7 @@ public class main {
 			case 2:
 				probarConexion("oracle");
 				break;
-			case 0:
+			case 3:
 				break;
 			default:
 				System.out.println("Opción inválida.");
@@ -177,8 +172,7 @@ public class main {
 
 			case "oracle":
 				Class.forName("oracle.jdbc.driver.OracleDriver"); // cargar driver Oracle
-				con = DriverManager.getConnection(
-						"jdbc:oracle:thin:@localhost:1521/XEPDB1", "EJEMPLO", "ejemplo");
+				con = DriverManager.getConnection("jdbc:oracle:thin:@localhost:1521/XEPDB1", "EJEMPLO", "ejemplo");
 				break;
 			}
 
@@ -191,8 +185,7 @@ public class main {
 
 			System.out.println("=== Contenido tabla DEPARTAMENTOS ===");
 			while (rs.next()) {
-				System.out.printf("%d - %s - %s%n",
-						rs.getInt(1), rs.getString(2), rs.getString(3));
+				System.out.printf("%d - %s - %s%n", rs.getInt(1), rs.getString(2), rs.getString(3));
 			}
 
 			rs.close();
@@ -204,5 +197,4 @@ public class main {
 			e.printStackTrace();
 		}
 	}
-
-} // FIN DE LA CLASE MAIN
+} 
