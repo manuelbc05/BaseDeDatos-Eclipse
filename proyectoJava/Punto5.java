@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.sql.SQLException;
@@ -25,7 +26,7 @@ public class main {
 			System.out.println("2 -> Oracle SQL");
 			System.out.println("3 -> Borrar ambas SQL");
 			System.out.println("4 -> Menú de conexiones JDBC");
-			System.out.println("5. Datos");
+			System.out.println("5 -> Datos");
 			System.out.println("6 -> Salir");
 			System.out.print("Selecciona una opción: ");
 			opcion = sc.nextInt();
@@ -58,9 +59,8 @@ public class main {
 		sc.close();
 
 	}
-	
-	
-	//Punto 3
+
+	// Punto 3
 	public static void instalarMySQL() {
 		try {
 			Class.forName("com.mysql.cj.jdbc.Driver");
@@ -137,9 +137,8 @@ public class main {
 			e.printStackTrace();
 		}
 	}
-	
-	
-	//Punto 4
+
+	// Punto 4
 	public static void menuConexiones() {
 		int op;
 		do {
@@ -205,14 +204,14 @@ public class main {
 			e.printStackTrace();
 		}
 	}
-	
-	//Punto 5
+
+	// Punto 5
 	public static void datos() {
 		int opciones;
 		do {
 			System.out.println("===OPERACIONES SOBRE DATOS===");
 			System.out.println("1. Mostrar listado de artículos ");
-			System.out.println("2. Mostrar listado de clientes" );
+			System.out.println("2. Mostrar listado de clientes");
 			System.out.println("3. Mostrar pedidos (cabecera) ");
 			System.out.println("4. Mostrar líneas de un pedido");
 			System.out.println("5. Insertar un nuevo artículo ");
@@ -220,30 +219,196 @@ public class main {
 			System.out.println("7. Eliminar un artículo (si no está en pedidos) ");
 			System.out.println("0. Volver ");
 			System.out.println("===============================");
-			System.out.println("Elige una opcion ");
-			opciones=sc.nextInt();
-			
-			switch(opciones) {
-				case 1:
-					break;
-				case 2:
-					break;
-				case 3:
-					break;
-				case 4:
-					break;
-				case 5:
-					break;
-				case 6:
-					break;
-				case 7:
-					break;
-				case 0:
-					break;
-				default:
-					System.out.println("Opcion no valida, prueba otra vez");
+			System.out.print("Elige una opcion: ");
+			opciones = sc.nextInt();
+			sc.nextLine();
+
+			switch (opciones) {
+			case 1:
+				mostrarArticulos();
+				break;
+			case 2:
+				mostrarClientes();
+				break;
+			case 3:
+				mostrarPedidosCabecera();
+				break;
+			case 4:
+				mostrarLineasPedido();
+				break;
+			case 5:
+				insertarArticulo();
+				break;
+			case 6:
+				modificarPrecioArticulo();
+				break;
+			case 7:
+				eliminarArticulo();
+				break;
+			case 0:
+				break;
+			default:
+				System.out.println("Opcion no valida, prueba otra vez");
 			}
-		}while(opciones != 0);
-		
+		} while (opciones != 0);
 	}
-} 
+
+	private static Connection obtenerConexionMySQL() throws SQLException, ClassNotFoundException {
+		Class.forName("com.mysql.cj.jdbc.Driver");
+		return DriverManager.getConnection("jdbc:mysql://localhost/ejemplo", "root", "");
+	}
+
+	private static void mostrarArticulos() {
+		String sql = "SELECT id_articulo, nombre, categoria, precio, stock FROM articulos";
+		try (Connection con = obtenerConexionMySQL();
+				Statement st = con.createStatement();
+				ResultSet rs = st.executeQuery(sql)) {
+			System.out.println("=== LISTADO ARTÍCULOS ===");
+			while (rs.next()) {
+				System.out.printf("%d | %s | %s | %.2f € | stock: %d%n", rs.getInt("id_articulo"),
+						rs.getString("nombre"), rs.getString("categoria"), rs.getDouble("precio"), rs.getInt("stock"));
+			}
+		} catch (Exception e) {
+			System.out.println("Error mostrando artículos");
+			e.printStackTrace();
+		}
+	}
+
+	private static void mostrarClientes() {
+		String sql = "SELECT id_cliente, nombre_completo, nif_cif, telefono, correo, ciudad FROM clientes";
+		try (Connection con = obtenerConexionMySQL();
+				Statement st = con.createStatement();
+				ResultSet rs = st.executeQuery(sql)) {
+			System.out.println("=== LISTADO CLIENTES ===");
+			while (rs.next()) {
+				System.out.printf("%d | %s | %s | %s | %s | %s%n", rs.getInt("id_cliente"), rs.getString("nombre_completo"),
+						rs.getString("nif_cif"), rs.getString("telefono"), rs.getString("correo"), rs.getString("ciudad"));
+			}
+		} catch (Exception e) {
+			System.out.println("Error mostrando clientes");
+			e.printStackTrace();
+		}
+	}
+
+	private static void mostrarPedidosCabecera() {
+		String sql = "SELECT id_pedido, id_cliente, id_empleado, id_tienda, fecha, estado FROM pedidos";
+		try (Connection con = obtenerConexionMySQL();
+				Statement st = con.createStatement();
+				ResultSet rs = st.executeQuery(sql)) {
+			System.out.println("=== CABECERAS DE PEDIDOS ===");
+			while (rs.next()) {
+				System.out.printf("%d | cliente:%d | vendedor:%d | tienda:%d | fecha:%s | estado:%s%n",
+						rs.getInt("id_pedido"), rs.getInt("id_cliente"), rs.getInt("id_empleado"),
+						rs.getInt("id_tienda"), rs.getDate("fecha"), rs.getString("estado"));
+			}
+		} catch (Exception e) {
+			System.out.println("Error mostrando pedidos");
+			e.printStackTrace();
+		}
+	}
+
+	private static void mostrarLineasPedido() {
+		System.out.print("Introduce id del pedido para ver sus líneas: ");
+		int idPedido = sc.nextInt();
+		String sql = "SELECT id_linea, articulo_id, cantidad, precio_unitario FROM lineas_pedido WHERE pedido_id = ?";
+		try (Connection con = obtenerConexionMySQL(); PreparedStatement ps = con.prepareStatement(sql)) {
+			ps.setInt(1, idPedido);
+			try (ResultSet rs = ps.executeQuery()) {
+				System.out.println("=== LÍNEAS DEL PEDIDO " + idPedido + " ===");
+				while (rs.next()) {
+					System.out.printf("%d | articulo:%d | cantidad:%d | precio:%.2f €%n", rs.getInt("id_linea"),
+							rs.getInt("articulo_id"), rs.getInt("cantidad"), rs.getDouble("precio_unitario"));
+				}
+			}
+		} catch (Exception e) {
+			System.out.println("Error mostrando líneas de pedido");
+			e.printStackTrace();
+		}
+	}
+
+	private static void insertarArticulo() {
+		System.out.println("== Insertar nuevo artículo ==");
+		System.out.print("Nombre: ");
+		String nombre = sc.nextLine();
+		System.out.print("Categoría: ");
+		String categoria = sc.nextLine();
+		System.out.print("Precio (ej. 199.99): ");
+		double precio = Double.parseDouble(sc.nextLine());
+		System.out.print("Stock (entero): ");
+		int stock = Integer.parseInt(sc.nextLine());
+		System.out.print("Proveedor id (opcional, 0 si ninguno): ");
+		int proveedorId = Integer.parseInt(sc.nextLine());
+
+		String sql = "INSERT INTO articulos (nombre, categoria, precio, stock, proveedor_id) VALUES (?, ?, ?, ?, ?)";
+		try (Connection con = obtenerConexionMySQL();
+				PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+			ps.setString(1, nombre);
+			ps.setString(2, categoria);
+			ps.setDouble(3, precio);
+			ps.setInt(4, stock);
+			if (proveedorId == 0)
+				ps.setNull(5, java.sql.Types.INTEGER);
+			else
+				ps.setInt(5, proveedorId);
+
+			int filas = ps.executeUpdate();
+			System.out.println("Filas insertadas: " + filas);
+			try (ResultSet keys = ps.getGeneratedKeys()) {
+				if (keys.next()) {
+					System.out.println("ID artículo creado: " + keys.getInt(1));
+				}
+			}
+		} catch (Exception e) {
+			System.out.println("Error insertando artículo");
+			e.printStackTrace();
+		}
+	}
+
+	private static void modificarPrecioArticulo() {
+		System.out.print("Introduce id del artículo a modificar: ");
+		int id = sc.nextInt();
+		System.out.print("Introduce nuevo precio: ");
+		double nuevoPrecio = sc.nextDouble();
+		sc.nextLine();
+
+		String sql = "UPDATE articulos SET precio = ? WHERE id_articulo = ?";
+		try (Connection con = obtenerConexionMySQL(); PreparedStatement ps = con.prepareStatement(sql)) {
+			ps.setDouble(1, nuevoPrecio);
+			ps.setInt(2, id);
+			int filas = ps.executeUpdate();
+			System.out.println("Filas afectadas: " + filas);
+		} catch (Exception e) {
+			System.out.println("Error modificando precio");
+			e.printStackTrace();
+		}
+	}
+
+	private static void eliminarArticulo() {
+		System.out.print("Introduce id del artículo a eliminar: ");
+		int id = sc.nextInt();
+		sc.nextLine();
+
+		String checkSql = "SELECT COUNT(*) AS cnt FROM lineas_pedido WHERE articulo_id = ?";
+		String deleteSql = "DELETE FROM articulos WHERE id_articulo = ?";
+
+		try (Connection con = obtenerConexionMySQL(); PreparedStatement psCheck = con.prepareStatement(checkSql)) {
+			psCheck.setInt(1, id);
+			try (ResultSet rs = psCheck.executeQuery()) {
+				if (rs.next() && rs.getInt("cnt") > 0) {
+					System.out.println("No se puede eliminar: el artículo está presente en líneas de pedido.");
+					return;
+				}
+			}
+
+			try (PreparedStatement psDel = con.prepareStatement(deleteSql)) {
+				psDel.setInt(1, id);
+				int filas = psDel.executeUpdate();
+				System.out.println("Filas eliminadas: " + filas);
+			}
+		} catch (Exception e) {
+			System.out.println("Error eliminando artículo");
+			e.printStackTrace();
+		}
+	}
+
+}
