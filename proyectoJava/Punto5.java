@@ -310,14 +310,14 @@ public class main {
 	private static void mostrarLineasPedido() {
 		System.out.print("Introduce id del pedido para ver sus líneas: ");
 		int idPedido = sc.nextInt();
-		String sql = "SELECT id_linea, articulo_id, cantidad, precio_unitario FROM lineas_pedido WHERE pedido_id = ?";
+		String sql = "SELECT id_linea, id_pedido, id_articulo, cantidad, precio_unitario FROM lineaspedido WHERE id_pedido = ?";
 		try (Connection con = obtenerConexionMySQL(); PreparedStatement ps = con.prepareStatement(sql)) {
 			ps.setInt(1, idPedido);
 			try (ResultSet rs = ps.executeQuery()) {
 				System.out.println("=== LÍNEAS DEL PEDIDO " + idPedido + " ===");
 				while (rs.next()) {
 					System.out.printf("%d | articulo:%d | cantidad:%d | precio:%.2f €%n", rs.getInt("id_linea"),
-							rs.getInt("articulo_id"), rs.getInt("cantidad"), rs.getDouble("precio_unitario"));
+							rs.getInt("id_pedido"), rs.getInt("id_articulo"), rs.getInt("cantidad"), rs.getDouble("precio_unitario"));
 				}
 			}
 		} catch (Exception e) {
@@ -328,6 +328,8 @@ public class main {
 
 	private static void insertarArticulo() {
 		System.out.println("== Insertar nuevo artículo ==");
+		System.out.print("Id Articulo (Único): ");
+		int ID = Integer.parseInt(sc.nextLine());
 		System.out.print("Nombre: ");
 		String nombre = sc.nextLine();
 		System.out.print("Categoría: ");
@@ -339,17 +341,18 @@ public class main {
 		System.out.print("Proveedor id (opcional, 0 si ninguno): ");
 		int proveedorId = Integer.parseInt(sc.nextLine());
 
-		String sql = "INSERT INTO articulos (nombre, categoria, precio, stock, proveedor_id) VALUES (?, ?, ?, ?, ?)";
+		String sql = "INSERT INTO articulos (id_articulo, nombre, categoria, precio, stock, id_proveedor) VALUES (?, ?, ?, ?, ?, ?)";
 		try (Connection con = obtenerConexionMySQL();
 				PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-			ps.setString(1, nombre);
-			ps.setString(2, categoria);
-			ps.setDouble(3, precio);
-			ps.setInt(4, stock);
+			ps.setInt(1, ID);
+			ps.setString(2, nombre);
+			ps.setString(3, categoria);
+			ps.setDouble(4, precio);
+			ps.setInt(5, stock);
 			if (proveedorId == 0)
-				ps.setNull(5, java.sql.Types.INTEGER);
+				ps.setNull(6, java.sql.Types.INTEGER);
 			else
-				ps.setInt(5, proveedorId);
+				ps.setInt(6, proveedorId);
 
 			int filas = ps.executeUpdate();
 			System.out.println("Filas insertadas: " + filas);
@@ -388,7 +391,7 @@ public class main {
 		int id = sc.nextInt();
 		sc.nextLine();
 
-		String checkSql = "SELECT COUNT(*) AS cnt FROM lineas_pedido WHERE articulo_id = ?";
+		String checkSql = "SELECT COUNT(*) AS cnt FROM lineaspedido WHERE id_articulo = ?";
 		String deleteSql = "DELETE FROM articulos WHERE id_articulo = ?";
 
 		try (Connection con = obtenerConexionMySQL(); PreparedStatement psCheck = con.prepareStatement(checkSql)) {
