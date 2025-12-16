@@ -28,7 +28,8 @@ public class main {
 			System.out.println("4 -> Menú de conexiones JDBC");
 			System.out.println("5 -> Datos");
 			System.out.println("6 -> Punto Seis");
-			System.out.println("7 -> Salir");
+			System.out.println("7 -> Mostrar metadatos SQL");
+			System.out.println("8 -> Salir");
 			System.out.print("Selecciona una opción: ");
 			opcion = sc.nextInt();
 
@@ -52,6 +53,8 @@ public class main {
 				puntoSeis();
 				break;
 			case 7:
+				break;
+			case 8:
 				System.out.println("Saliendo...");
 				break;
 			default:
@@ -59,7 +62,7 @@ public class main {
 			}
 
 			System.out.println();
-		} while (opcion != 7);
+		} while (opcion != 8);
 
 		sc.close();
 
@@ -278,10 +281,13 @@ public class main {
 				articulosPorCategoria();
 				break;
 			case 2:
+				insertarNuevoCliente();
 				break;
 			case 3:
+				modificarSalarioEmpleado();
 				break;
 			case 4:
+				reparacionesPorEstado();
 				break;
 			case 0:
 				break;
@@ -473,9 +479,95 @@ public class main {
 				}
 			}
 		} catch (Exception e) {
-			System.out.println("Error mostrando líneas de pedido");
+			System.out.println("Error los articulos por categoria mostro");
 			e.printStackTrace();
 		}
 	}
+	
+	private static void insertarNuevoCliente() {
+		System.out.println("- - Insertar nuevo artículo - -");
+		System.out.print("Id del cliente (Único): ");
+		int id_cliente = Integer.parseInt(sc.nextLine());
+		System.out.print("Nombre completo: ");
+		String nombre_completo = sc.nextLine();
+		System.out.print("NIF o CIF: ");
+		String nif_cif = sc.nextLine();
+		System.out.print("Telefono: ");
+		int telefono = Integer.parseInt(sc.nextLine());
+		System.out.print("Correo: ");
+		String correo = sc.nextLine();
+		System.out.print("Ciudad: ");
+		String ciudad = sc.nextLine();
 
+		String sql = "INSERT INTO clientes (id_cliente, nombre_completo, nif_cif, telefono, correo, ciudad) VALUES (?, ?, ?, ?, ?, ?)";
+		try (Connection con = obtenerConexionMySQL();
+				PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+			ps.setInt(1, id_cliente);
+			ps.setString(2, nombre_completo);
+			ps.setString(3, nif_cif);
+			ps.setInt(4, telefono);
+			ps.setString(5, correo);
+			ps.setString(6, ciudad);
+
+			int filas = ps.executeUpdate();
+			System.out.println("Filas insertadas: " + filas);
+			try (ResultSet keys = ps.getGeneratedKeys()) {
+				if (keys.next()) {
+					System.out.println("ID artículo creado: " + keys.getInt(1));
+				}
+			}
+		} catch (Exception e) {
+			System.out.println("Error insertando el cliente");
+			e.printStackTrace();
+		}
+	}
+	
+	private static void modificarSalarioEmpleado() {
+		System.out.print("Introduce id del artículo a modificar: ");
+		int id = sc.nextInt();
+		System.out.print("Introduce nuevo salario: ");
+		double nuevoSalario = sc.nextDouble();
+		sc.nextLine();
+
+		String sql = "UPDATE empleados SET salario = ? WHERE id_empleado = ?";
+		try (Connection con = obtenerConexionMySQL(); PreparedStatement ps = con.prepareStatement(sql)) {
+			ps.setDouble(1, nuevoSalario);
+			ps.setInt(2, id);
+			int filas = ps.executeUpdate();
+			System.out.println("Filas afectadas: " + filas);
+		} catch (Exception e) {
+			System.out.println("Error modificando el salario");
+			e.printStackTrace();
+		}
+	}
+	
+	private static void reparacionesPorEstado() {
+		System.out.print("Introduce el estado por el que quieres buscar (En proceso, Pendiente o Finalizada): ");
+		String categoria = sc.nextLine();
+		String sql = "SELECT id_reparacion, id_cliente, id_empleado, id_tienda, fecha_entrada, fecha_salida, descripcion, diagnostico, coste_mano_obra, estado FROM reparaciones WHERE estado = ?";
+		try (Connection con = obtenerConexionMySQL(); PreparedStatement ps = con.prepareStatement(sql)) {
+			ps.setString(1, categoria);
+			try (ResultSet rs = ps.executeQuery()) {
+				System.out.println("- - - Categoria " + categoria + " - - -");
+				while (rs.next()) {
+					System.out.printf(
+						    "%d | cliente:%d | empleado:%d | tienda:%d | entrada:%s | salida:%s | desc:%s | diag:%s | coste:%.2f € | estado:%s%n",
+						    rs.getInt("id_reparacion"),
+						    rs.getInt("id_cliente"),
+						    rs.getInt("id_empleado"),
+						    rs.getInt("id_tienda"),
+						    rs.getDate("fecha_entrada"),
+						    rs.getDate("fecha_salida"),
+						    rs.getString("descripcion"),
+						    rs.getString("diagnostico"),
+						    rs.getDouble("coste_mano_obra"),
+						    rs.getString("estado")
+						);
+				}
+			}
+		} catch (Exception e) {
+			System.out.println("Error al buscar por estado");
+			e.printStackTrace();
+		}
+	}
 }
