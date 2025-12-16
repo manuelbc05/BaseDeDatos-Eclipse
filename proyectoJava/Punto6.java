@@ -543,12 +543,12 @@ public class main {
 	
 	private static void reparacionesPorEstado() {
 		System.out.print("Introduce el estado por el que quieres buscar (En proceso, Pendiente o Finalizada): ");
-		String categoria = sc.nextLine();
+		String estado = sc.nextLine();
 		String sql = "SELECT id_reparacion, id_cliente, id_empleado, id_tienda, fecha_entrada, fecha_salida, descripcion, diagnostico, coste_mano_obra, estado FROM reparaciones WHERE estado = ?";
 		try (Connection con = obtenerConexionMySQL(); PreparedStatement ps = con.prepareStatement(sql)) {
-			ps.setString(1, categoria);
+			ps.setString(1, estado);
 			try (ResultSet rs = ps.executeQuery()) {
-				System.out.println("- - - Categoria " + categoria + " - - -");
+				System.out.println("- - - Estado " + estado + " - - -");
 				while (rs.next()) {
 					System.out.printf(
 						    "%d | cliente:%d | empleado:%d | tienda:%d | entrada:%s | salida:%s | desc:%s | diag:%s | coste:%.2f € | estado:%s%n",
