@@ -1,17 +1,6 @@
 package proyectoCapituloDos;
 
 import java.io.FileReader;
-import java.io.IOException;
-import java.io.Reader;
-import java.sql.*;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Scanner;
-
-import org.apache.ibatis.jdbc.ScriptRunner;
-
-import net.sf.jasperreports.engine.*;
-import net.sf.jasperreports.view.JasperViewer;
 
 public class main {
 
@@ -23,7 +12,7 @@ public class main {
 
 	static TipoBD bdSeleccionada;
 
-	static final String MYSQL_URL = "jdbc:mysql://localhost/ejemplo?allowMultiQueries=true";
+	static final String MYSQL_URL = "jdbc:mysql://localhost:3306/ejemplo?allowMultiQueries=true&useSSL=false&serverTimezone=UTC";
 	static final String MYSQL_USER = "root";
 	static final String MYSQL_PASS = "";
 
@@ -32,7 +21,6 @@ public class main {
 	static final String ORACLE_PASS = "ejemplo";
 
 	public static void main(String[] args) {
-
 		seleccionarBaseDeDatos();
 
 		int opcion;
@@ -84,6 +72,8 @@ public class main {
 				break;
 			}
 		} while (opcion != 0);
+
+		sc.close();
 	}
 
 	private static void seleccionarBaseDeDatos() {
@@ -97,6 +87,7 @@ public class main {
 			sc.nextLine();
 		} while (op != 1 && op != 2);
 		bdSeleccionada = (op == 1) ? TipoBD.MYSQL : TipoBD.ORACLE;
+		System.out.println("Base de datos seleccionada: " + bdSeleccionada);
 	}
 
 	private static Connection obtenerConexion() throws SQLException, ClassNotFoundException {
@@ -114,15 +105,25 @@ public class main {
 			Connection conexion = obtenerConexion();
 			String archivo = (bdSeleccionada == TipoBD.MYSQL) ? "./script/accesoDatosmysql.sql"
 					: "./script/accesoDatosoracle.sql";
+
+			System.out.println("Ejecutando script desde: " + archivo);
+
 			Reader reader = new FileReader(archivo);
 			ScriptRunner scriptRunner = new ScriptRunner(conexion);
 			scriptRunner.setLogWriter(null);
 			scriptRunner.setAutoCommit(false);
+			scriptRunner.setStopOnError(true);
 			scriptRunner.runScript(reader);
-			conexion.commit();
+
+			if (bdSeleccionada == TipoBD.ORACLE) {
+				conexion.commit();
+			}
+
 			System.out.println("Script ejecutado con éxito (" + bdSeleccionada + ")");
+			reader.close();
 			conexion.close();
 		} catch (ClassNotFoundException | IOException | SQLException e) {
+			System.err.println("Error al ejecutar script: " + e.getMessage());
 			e.printStackTrace();
 		}
 	}
@@ -132,15 +133,25 @@ public class main {
 			Connection conexion = obtenerConexion();
 			String archivo = (bdSeleccionada == TipoBD.MYSQL) ? "./script/drop_all_mysql.sql"
 					: "./script/drop_all_oracle.sql";
+
+			System.out.println("Ejecutando script de eliminación desde: " + archivo);
+
 			Reader reader = new FileReader(archivo);
 			ScriptRunner scriptRunner = new ScriptRunner(conexion);
 			scriptRunner.setLogWriter(null);
 			scriptRunner.setAutoCommit(false);
+			scriptRunner.setStopOnError(true);
 			scriptRunner.runScript(reader);
-			conexion.commit();
+
+			if (bdSeleccionada == TipoBD.ORACLE) {
+				conexion.commit();
+			}
+
 			System.out.println("Base de datos eliminada correctamente (" + bdSeleccionada + ")");
+			reader.close();
 			conexion.close();
 		} catch (ClassNotFoundException | IOException | SQLException e) {
+			System.err.println("Error al eliminar base de datos: " + e.getMessage());
 			e.printStackTrace();
 		}
 	}
@@ -172,16 +183,21 @@ public class main {
 		try {
 			Connection con = obtenerConexion();
 			System.out.println("Conexión establecida con " + bdSeleccionada);
+
+			String tabla = bdSeleccionada == TipoBD.MYSQL ? "SELECT 1 as conexion_ok"
+					: "SELECT 1 as conexion_ok FROM dual";
+
 			Statement st = con.createStatement();
-			ResultSet rs = st.executeQuery("SELECT * FROM departamentos");
-			while (rs.next()) {
-				System.out.printf("%d - %s - %s%n", rs.getInt(1), rs.getString(2), rs.getString(3));
+			ResultSet rs = st.executeQuery(tabla);
+			if (rs.next()) {
+				System.out.println("✓ Prueba de conexión exitosa");
 			}
+
 			rs.close();
 			st.close();
 			con.close();
 		} catch (Exception e) {
-			System.out.println("Error al conectar con " + bdSeleccionada);
+			System.out.println("✗ Error al conectar con " + bdSeleccionada);
 			e.printStackTrace();
 		}
 	}
@@ -487,10 +503,10 @@ public class main {
 			DatabaseMetaData dbmd = conexion.getMetaData();
 			System.out.printf("Nombre: %s%nDriver: %s%nURL: %s%nUsuario: %s%n", dbmd.getDatabaseProductName(),
 					dbmd.getDriverName(), dbmd.getURL(), dbmd.getUserName());
-			ResultSet resul = dbmd.getTables(null, null, null, null);
+			ResultSet resul = dbmd.getTables(null, null, null, new String[] { "TABLE" });
 			while (resul.next()) {
-				System.out.printf("%s - Catalogo: %s, Esquema: %s, Nombre: %s%n", resul.getString(4),
-						resul.getString(1), resul.getString(2), resul.getString(3));
+				String nombreTabla = resul.getString("TABLE_NAME");
+				System.out.println("Tabla: " + nombreTabla);
 			}
 			conexion.close();
 		} catch (Exception e) {
@@ -530,12 +546,13 @@ public class main {
 			double porcentaje = sc.nextDouble();
 			sc.nextLine();
 			Connection con = obtenerConexion();
-			String sql = "{ call actualizar_precios_categoria(?, ?) }";
-			CallableStatement llamada = con.prepareCall(sql);
-			llamada.setString(1, categoria);
-			llamada.setDouble(2, porcentaje);
-			llamada.execute();
-			llamada.close();
+			String sql = "UPDATE articulos SET precio = precio * (1 + ?/100) WHERE categoria = ?";
+			PreparedStatement ps = con.prepareStatement(sql);
+			ps.setDouble(1, porcentaje);
+			ps.setString(2, categoria);
+			int filas = ps.executeUpdate();
+			System.out.println("Filas actualizadas: " + filas);
+			ps.close();
 			con.close();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -554,6 +571,8 @@ public class main {
 			ResultSet rs = ps.executeQuery();
 			if (rs.next())
 				System.out.println("Total: " + rs.getDouble("total"));
+			else
+				System.out.println("No se encontró el pedido");
 			rs.close();
 			ps.close();
 			con.close();
@@ -565,11 +584,11 @@ public class main {
 	public static void listadoPDFreparaciones() {
 		String miplantilla = "C:\\Users\\windh\\eclipse-workspace\\conexionmysql\\src\\main\\java\\proyectoCapituloDos\\informe\\plantillaReparaciones.jrxml";
 		String reportHTML = "C:\\Users\\windh\\eclipse-workspace\\conexionmysql\\src\\main\\java\\proyectoCapituloDos\\terminado\\InformeReparaciones.html";
-		String reportPDF = "C:\\\\Users\\\\windh\\\\eclipse-workspace\\\\conexionmysql\\\\src\\\\main\\\\java\\\\proyectoCapituloDos\\\\terminado\\\\InformeReparaciones.pdf";
-		String reportXML = "C:\\\\Users\\\\windh\\\\eclipse-workspace\\\\conexionmysql\\\\src\\\\main\\\\java\\\\proyectoCapituloDos\\\\terminado\\\\InformeReparaciones.xml";
+		String reportPDF = "C:\\Users\\windh\\eclipse-workspace\\conexionmysql\\src\\main\\java\\proyectoCapituloDos\\terminado\\InformeReparaciones.pdf";
+		String reportXML = "C:\\Users\\windh\\eclipse-workspace\\conexionmysql\\src\\main\\java\\proyectoCapituloDos\\terminado\\InformeReparaciones.xml";
 		Map<String, Object> params = new HashMap<>();
 		params.put("titulo", "LISTADO DE REPARACIONES");
-		params.put("autor", "ARM");
+		params.put("autor", "Manuel y Ariadne");
 		try {
 			Connection conn = obtenerConexion();
 			JasperReport jasperReport = JasperCompileManager.compileReport(miplantilla);
